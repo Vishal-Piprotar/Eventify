@@ -1,11 +1,11 @@
 import axios from 'axios';
 
 // Base URL for the API
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // Create an Axios instance with the base URL
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}/api`,
 });
 
 // Request interceptor to add the Authorization header
