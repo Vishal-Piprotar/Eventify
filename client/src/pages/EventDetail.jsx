@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, Users, MapPin, ArrowLeft, Calendar, Share2, Heart, MessageCircle, AlertCircle } from 'lucide-react';
-import { getEventById, api } from '../api'; // Import the API methods
+import { getEventById, api } from "../utils/api.js"
 
 const EventDetail = () => {
   const { id } = useParams();
