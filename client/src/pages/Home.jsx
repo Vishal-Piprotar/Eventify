@@ -72,11 +72,8 @@ const Home = () => {
   ];
 
   const handleGetStarted = () => {
-    if (user) {
       navigate('/events');
-    } else {
-      navigate('/login');
-    }
+   
   };
 
   return (
