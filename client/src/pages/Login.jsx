@@ -134,7 +134,7 @@ const Login = () => {
               <div className="bg-white py-6 sm:py-8 px-4 sm:px-6 md:px-10 shadow-2xl rounded-3xl relative">
                 <div className="text-center mb-4 sm:mb-6">
                   <h2 className="text-2xl sm:text-3xl font-bold flex items-center justify-center flex-wrap gap-2 sm:gap-3 text-gray-800">
-                    <Lock className="text-blue-500" size={28} />
+                    {/* <Lock className="text-blue-500" size={28} /> */}
                     Sign In to Eventify
                   </h2>
                   <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-500">
@@ -171,6 +171,14 @@ const Login = () => {
                     value={formData.password}
                     onChange={handleChange}
                   />
+                  <div className="flex justify-end">
+                    <Link
+                      to="/login"
+                      className="text-xs sm:text-sm text-blue-500 hover:text-blue-700 transition-colors duration-200"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
                   <LoadingButton
                     type="submit"
                     isLoading={isLoading}
