@@ -27,7 +27,7 @@ const EventDetail = () => {
         const attendeesRes = await api.get(`/events/${id}/attendees`);
         const attendeesData = attendeesRes.data;
 
-        setEvent(eventData);
+        setEvent(eventData.data);
         setAttendees(attendeesData.attendees || []);
       } catch (error) {
         setError(error.response?.data?.message || error.message || 'Failed to fetch event details');
