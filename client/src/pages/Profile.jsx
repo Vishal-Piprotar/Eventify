@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { getUserProfile } from '../utils/api.js';
 
-// QuickActionCard component - Added missing Icon prop
+
 const QuickActionCard = ({ icon: Icon, title, description, onClick }) => (
   <div
     onClick={onClick}

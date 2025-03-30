@@ -83,7 +83,7 @@ const Login = () => {
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-2 sm:px-4 md:px-6 lg:px-8">
       <div className="relative py-20 px-6 md:px-12 lg:px-24 overflow-hidden">
         {/* Background Decorations */}
-        <div className="absolute inset-0 bg-blue-600 opacity-5 rounded-full scale-150 -translate-x-1/3 -translate-y-1/4"></div>
+        <div className="absolute inset-0 bg-blue-600 opacity-5 rounded-full scale-150 -translate-x-1/6 md:-translate-x-1/3 -translate-y-1/4"></div>
         <div className="absolute inset-0 bg-eventify-500 opacity-5 rounded-full scale-150 translate-x-1/3 translate-y-1/4"></div>
 
         {/* Main Content */}
