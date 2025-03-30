@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
-import EventCard from '../components/EventCard'; // Import the child component
-import { fetchEvents } from '../utils/api.js'; // Ensure this file exists and works
+import EventCard from '../components/EventCard';
+import { fetchEvents } from '../utils/api.js';
 
 const Events = () => {
   const navigate = useNavigate();
@@ -43,16 +43,16 @@ const Events = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Calendar className="mr-2" size={32} />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
+            <Calendar className="mr-2" size={24} sm:size={32} />
             Events
           </h1>
-          <div className="flex space-x-4">
+          <div className="flex flex-wrap w-full sm:w-auto gap-2 sm:gap-4">
             <button
-              className={`px-4 py-2 rounded-md ${
+              className={`px-3 py-1 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md flex-grow sm:flex-grow-0 ${
                 filter === 'all'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -62,7 +62,7 @@ const Events = () => {
               All
             </button>
             <button
-              className={`px-4 py-2 rounded-md ${
+              className={`px-3 py-1 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md flex-grow sm:flex-grow-0 ${
                 filter === 'upcoming'
                   ? 'bg-green-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -72,7 +72,7 @@ const Events = () => {
               Upcoming
             </button>
             <button
-              className={`px-4 py-2 rounded-md ${
+              className={`px-3 py-1 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md flex-grow sm:flex-grow-0 ${
                 filter === 'past'
                   ? 'bg-red-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -86,27 +86,29 @@ const Events = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600"></div>
+          <div className="flex justify-center items-center h-32 sm:h-64">
+            <div className="animate-spin rounded-full h-10 w-10 sm:h-16 sm:w-16 border-t-4 border-blue-600"></div>
           </div>
         )}
 
         {/* Error State */}
-        {error && <p className="text-red-600 text-center">{error}</p>}
+        {error && <p className="text-red-600 text-center p-4">{error}</p>}
 
         {/* Empty State */}
         {!loading && !error && filteredEvents.length === 0 && (
-          <p className="text-center text-gray-600">
-            {filter === 'upcoming'
-              ? 'No upcoming events available.'
-              : filter === 'past'
-              ? 'No past events available.'
-              : 'No events available.'}
-          </p>
+          <div className="flex justify-center items-center h-32 sm:h-64">
+            <p className="text-center text-gray-600 p-4">
+              {filter === 'upcoming'
+                ? 'No upcoming events available.'
+                : filter === 'past'
+                ? 'No past events available.'
+                : 'No events available.'}
+            </p>
+          </div>
         )}
 
         {/* Event List */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredEvents.map((event) => (
             <EventCard
               key={event.id}
