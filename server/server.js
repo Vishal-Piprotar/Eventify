@@ -10,6 +10,10 @@ const app = express();
 app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 
+app.get("/",(req,res)=>{
+    res.send("<h1>Backend Working...</h1>")
+})
+
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 // app.use('/api', registrationRoutes);
