@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { getUserProfile } from '../utils/api.js';
 
-const QuickActionCard = ({  title, description, onClick }) => (
+// QuickActionCard component - Added missing Icon prop
+const QuickActionCard = ({ icon: Icon, title, description, onClick }) => (
   <div
     onClick={onClick}
     className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer group"
@@ -386,7 +387,7 @@ const Profile = () => {
               </>
             )}
             <button
-              onClick={() => navigate('/events')}
+              onClick={() => navigate('/profile')}
               className="mt-6 text-blue-600 hover:underline inline-flex items-center"
             >
               View All Events <ExternalLink size={14} className="ml-1" />
@@ -429,13 +430,13 @@ const Profile = () => {
           <div className="flex justify-center md:justify-end space-x-4">
             <button
               className="bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 transition-colors"
-              onClick={() => navigate('/faq')}
+              onClick={() => navigate('/profile')}
             >
               View FAQ
             </button>
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              onClick={() => navigate('/support')}
+              onClick={() => navigate('/profile')}
             >
               Contact Support
             </button>
