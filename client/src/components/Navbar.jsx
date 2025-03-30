@@ -122,7 +122,7 @@ export default function Navbar() {
       {/* Mobile Menu - Positioned to slide from right */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed md:hidden top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50"
+          className="fixed md:hidden top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out z-50 flex flex-col"
           onClick={handleMenuClick}
           style={{ transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(100%)' }}
         >
@@ -131,7 +131,9 @@ export default function Navbar() {
               <X size={24} />
             </button>
           </div>
-          <div className="p-4">
+          
+          {/* Main menu content */}
+          <div className="p-4 flex-grow">
             {navLinks.map(({ to, label, icon }) => (
               <Link key={to} to={to} className="block px-3 py-2 rounded-md hover:bg-gray-100 flex items-center mb-2" onClick={() => setMobileMenuOpen(false)}>
                 {icon} <span className="ml-2">{label}</span>
@@ -139,31 +141,36 @@ export default function Navbar() {
             ))}
             {isAuthenticated ? (
               <>
-                <div className="border-t border-gray-200 my-4 pt-4">
-                  <div className="flex items-center px-3 py-2 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center mr-2">
-                      {user?.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{user?.name || 'User'}</p>
-                      <p className="text-xs text-gray-500">{user?.email}</p>
-                    </div>
-                  </div>
-                  <Link to="/profile" className="block px-3 py-2 rounded-md hover:bg-gray-100 flex items-center mb-2" onClick={() => setMobileMenuOpen(false)}>
-                    <LayoutDashboard size={18} /> <span className="ml-2">Profile</span>
-                  </Link>
-                  <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center text-red-600">
-                    <LogOut size={18} /> <span className="ml-2">Logout</span>
-                  </button>
-                </div>
+                <Link to="/profile" className="block px-3 py-2 rounded-md hover:bg-gray-100 flex items-center mb-2" onClick={() => setMobileMenuOpen(false)}>
+                  <LayoutDashboard size={18} /> <span className="ml-2">Profile</span>
+                </Link>
+                <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 flex items-center text-red-600">
+                  <LogOut size={18} /> <span className="ml-2">Logout</span>
+                </button>
               </>
             ) : (
-              <div className="border-t border-gray-200 my-4 pt-4">
+              <>
                 <Link to="/login" className="block px-3 py-2 rounded-md hover:bg-gray-100 mb-2" onClick={() => setMobileMenuOpen(false)}>Login</Link>
                 <Link to="/register" className="block px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" onClick={() => setMobileMenuOpen(false)}>Register</Link>
-              </div>
+              </>
             )}
           </div>
+          
+          {/* User profile at bottom */}
+          {isAuthenticated && (
+            <div className="mt-auto border-t border-gray-200">
+              <div className="flex items-center px-3 py-4">
+                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center mr-2">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{user?.name || 'User'}</p>
+                  
+                  <p className="text-xs text-gray-500">{user?.email}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
