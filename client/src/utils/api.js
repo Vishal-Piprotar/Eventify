@@ -47,6 +47,18 @@ export const updateEvent = (eventId, eventData) =>
 export const deleteEvent = (eventId) =>
   api.delete(`/events/${eventId}`).then((res) => res.data);
 
+// New method for fetching event attendees
+export const getEventAttendees = (eventId) =>
+  api.get(`/events/${eventId}/attendees`).then((res) => res.data);
+
+// New method for registering for an event
+export const registerForEvent = (eventId, userData = {}) =>
+  api.post(`/events/${eventId}/register`, userData).then((res) => res.data);
+
+// New method for like/unlike an event
+export const toggleEventLike = (eventId, liked) =>
+  api.post(`/events/${eventId}/like`, { liked }).then((res) => res.data);
+
 // User Management APIs
 export const fetchUsers = () => api.get('/users').then((res) => res.data);
 

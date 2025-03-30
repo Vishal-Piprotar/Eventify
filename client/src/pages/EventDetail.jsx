@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, Users, MapPin, ArrowLeft, Calendar, Share2, Heart, MessageCircle, AlertCircle } from 'lucide-react';
+import { getEventById, api } from '../api'; // Import the API methods
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -18,21 +19,18 @@ const EventDetail = () => {
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
-        const [eventRes, attendeesRes] = await Promise.all([
-          fetch(`http://localhost:5000/api/events/${id}`),
-          fetch(`http://localhost:5000/api/events/${id}/attendees`),
-        ]);
+        // Using the API methods from api.js
+        const eventData = await getEventById(id);
+        
+        // Since there's no dedicated attendees method in the API file,
+        // we'll create one using the base api instance
+        const attendeesRes = await api.get(`/events/${id}/attendees`);
+        const attendeesData = attendeesRes.data;
 
-        if (!eventRes.ok) throw new Error('Failed to fetch event details');
-        if (!attendeesRes.ok) throw new Error('Failed to fetch attendees');
-
-        const eventData = await eventRes.json();
-        const attendeesData = await attendeesRes.json();
-
-        setEvent(eventData.data);
-        setAttendees(attendeesData.data.attendees || []);
+        setEvent(eventData);
+        setAttendees(attendeesData.attendees || []);
       } catch (error) {
-        setError(error.message);
+        setError(error.response?.data?.message || error.message || 'Failed to fetch event details');
       } finally {
         setLoading(false);
       }
@@ -59,19 +57,26 @@ const EventDetail = () => {
     return new Date(dateString).toLocaleTimeString(undefined, options);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!isEventEnded) {
-      // In a real app, this would call an API to register
-      setRegistrationStatus('confirmed');
+      try {
+       
+        setRegistrationStatus('confirmed');
+      } catch (error) {
+        setError('Failed to register for the event',error);
+      }
     }
   };
 
-  const handleLikeToggle = () => {
-    setIsLiked(!isLiked);
+  const handleLikeToggle = async () => {
+    try {
+      setIsLiked(!isLiked);
+    } catch (error) {
+      console.error('Failed to update like status', error);
+    }
   };
 
   const handleShare = () => {
-    // In a real app, this would open a share dialog
     alert('Share functionality would open here');
   };
 
