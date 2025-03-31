@@ -18,6 +18,8 @@ const Events = () => {
   const fetchEventsData = async () => {
     setLoading(true);
     try {
+      await new Promise((resolve) => setTimeout(resolve,5000));
+
       const response = await fetchEvents();
       setEvents(response.data?.events || []);
     } catch (err) {
