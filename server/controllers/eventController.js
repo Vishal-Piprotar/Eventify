@@ -20,30 +20,30 @@ const getAuthHeader = (userId) => {
 };
 
 // Create a new event
+// Create a new event
 export const createEvent = async (req, res) => {
   try {
-    const { name, startDate, endDate, description, status, capacity, location } = req.body;
-    const userId = req.headers['x-user-id'] || req.user.id;
+    const { name, startDate, endDate, description, status, capacity, location } =
+      req.body;
+    const userId = req.headers["x-user-id"] || req.user?.id;
 
-    // Authentication and authorization check
     if (!req.user) {
-      return res.status(401).json({ 
-        error: 'Unauthorized',
-        message: 'User must be authenticated to create events' 
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "User must be authenticated to create events",
       });
     }
-    if (req.user.role !== 'Organizer' && req.user.role !== 'Admin') {
-      return res.status(403).json({ 
-        error: 'Forbidden',
-        message: 'Only Organizers and Admins can create events' 
+    if (req.user.role !== "Organizer" && req.user.role !== "Admin") {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Only Organizers and Admins can create events",
       });
     }
 
-    // Input validation
     if (!name || !startDate || !endDate) {
-      return res.status(400).json({ 
-        error: 'Bad Request',
-        message: 'Name, startDate, and endDate are required' 
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Name, startDate, and endDate are required",
       });
     }
 
@@ -51,37 +51,42 @@ export const createEvent = async (req, res) => {
       name,
       startDate,
       endDate,
-      description: description || '',
-      status: status || 'Scheduled',
+      description: description || "",
+      status: status || "Scheduled",
       capacity: capacity || null,
-      location: location || 'Virtual',
+      location: location || "Virtual",
     };
 
-    const response = await axios.post(getSfApiBaseUrl(), eventData, getAuthHeader(userId));
+    const response = await axios.post(
+      getSfApiBaseUrl(),
+      eventData,
+      getAuthHeader(userId)
+    );
 
     if (response.data.statusCode !== 201) {
-      return res.status(response.data.statusCode || 400).json({ 
-        error: 'Creation Failed',
-        message: response.data.message || 'Failed to create event in Salesforce' 
+      return res.status(response.data.statusCode || 400).json({
+        error: "Creation Failed",
+        message: response.data.message || "Failed to create event in Salesforce",
       });
     }
 
-    const responseData = typeof response.data.data === 'string'
-      ? JSON.parse(response.data.data)
-      : response.data.data;
+    const responseData =
+      typeof response.data.data === "string"
+        ? JSON.parse(response.data.data)
+        : response.data.data;
 
     res.status(201).json({
       success: true,
-      message: 'Event created successfully',
+      message: "Event created successfully",
       data: {
-        id: responseData.eventId,
+        id: responseData.eventId || responseData.Id,
         ...eventData,
         ownerId: userId,
         createdBy: userId,
       },
     });
-  } catch( error) {
-    console.error('Event creation error:', {
+  } catch (error) {
+    console.error("Event creation error:", {
       message: error.message,
       stack: error.stack,
       response: error.response?.data,
@@ -89,11 +94,15 @@ export const createEvent = async (req, res) => {
 
     const status = error.response?.status || 500;
     res.status(status).json({
-      error: status === 500 ? 'Server Error' : 'Creation Failed',
-      message: error.response?.data?.message || error.message || 'Failed to create event',
+      error: status === 500 ? "Server Error" : "Creation Failed",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create event",
     });
   }
 };
+
 
 // Get all events
 export const getEvents = async (req, res) => {

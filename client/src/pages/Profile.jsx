@@ -12,7 +12,12 @@ import {
   ExternalLink,
   Star,
 } from "lucide-react";
-import { getUserProfile } from "../utils/api.js";
+import {
+  getUserProfile,
+  // fetchNotifications,
+  createEvent,
+} from "../utils/api.js";
+import EventModal from "../components/EventModal.jsx";
 
 const QuickActionCard = ({ icon: Icon, title, description, onClick }) => (
   <div
@@ -30,42 +35,52 @@ const QuickActionCard = ({ icon: Icon, title, description, onClick }) => (
   </div>
 );
 
-const EventPreview = ({ event, onEventClick }) => (
-  <div
-    onClick={() => onEventClick(event.id || event.Id)}
-    className="bg-white p-4 rounded-lg shadow-md flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
-  >
-    <div>
-      <h4 className="text-md font-semibold text-gray-800">
-        {event.name || event.Name}
-      </h4>
-      {event.startDate && (
-        <p className="text-sm text-gray-600 flex items-center">
-          <Clock className="mr-1" size={14} />
-          {new Date(event.startDate).toLocaleDateString()}
-        </p>
-      )}
-      {event.Registration_Status__c && (
-        <p className="text-xs text-gray-500 mt-1">
-          Status: {event.Registration_Status__c}
-        </p>
-      )}
-    </div>
-    <span
-      className={`px-2 py-1 rounded-full text-xs ${
-        event.status === "Scheduled"
-          ? "bg-blue-100 text-blue-800"
-          : event.status === "In Progress"
-          ? "bg-green-100 text-green-800"
-          : event.status === "Completed"
-          ? "bg-gray-100 text-gray-800"
-          : "bg-purple-100 text-purple-800"
-      }`}
+const EventPreview = ({ event, onEventClick }) => {
+  const normalizedEvent = {
+    id: event.id || event.Id,
+    name: event.name || event.Name,
+    startDate: event.startDate || event.startDate__c,
+    status: event.status || event.Status__c || "Registered",
+    registrationStatus: event.Registration_Status__c,
+  };
+
+  return (
+    <div
+      onClick={() => onEventClick(normalizedEvent.id)}
+      className="bg-white p-4 rounded-lg shadow-md flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
     >
-      {event.status || "Registered"}
-    </span>
-  </div>
-);
+      <div>
+        <h4 className="text-md font-semibold text-gray-800">
+          {normalizedEvent.name}
+        </h4>
+        {normalizedEvent.startDate && (
+          <p className="text-sm text-gray-600 flex items-center">
+            <Clock className="mr-1" size={14} />
+            {new Date(normalizedEvent.startDate).toLocaleDateString()}
+          </p>
+        )}
+        {normalizedEvent.registrationStatus && (
+          <p className="text-xs text-gray-500 mt-1">
+            Status: {normalizedEvent.registrationStatus}
+          </p>
+        )}
+      </div>
+      <span
+        className={`px-2 py-1 rounded-full text-xs ${
+          normalizedEvent.status === "Scheduled"
+            ? "bg-blue-100 text-blue-800"
+            : normalizedEvent.status === "In Progress"
+            ? "bg-green-100 text-green-800"
+            : normalizedEvent.status === "Completed"
+            ? "bg-gray-100 text-gray-800"
+            : "bg-purple-100 text-purple-800"
+        }`}
+      >
+        {normalizedEvent.status}
+      </span>
+    </div>
+  );
+};
 
 const NotificationItem = ({ notification, onDismiss }) => (
   <div
@@ -86,7 +101,7 @@ const NotificationItem = ({ notification, onDismiss }) => (
     <button
       onClick={() => onDismiss(notification.id)}
       className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-      aria-label="Dismiss notification"
+      aria-label={`Dismiss notification: ${notification.message}`}
     >
       ×
     </button>
@@ -136,31 +151,20 @@ const FeedbackItem = ({ feedback }) => (
 const Profile = () => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      message: "Your subscription renews in 5 days",
-      type: "info",
-      actionUrl: "/billing",
-    },
-    {
-      id: 2,
-      message: "New event scheduled: Team Meeting",
-      type: "event",
-      actionUrl: "/events/123",
-    },
-  ]);
+  const [notifications, setNotifications] = useState([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [error, setError] = useState("");
   const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
   const [activeTab, setActiveTab] = useState("registered");
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         setLoadingProfile(true);
         const response = await getUserProfile();
-        if (response && response.success && response.data) {
+        if (response?.success && response.data) {
           setProfileData(response.data);
         } else {
           throw new Error(response?.message || "Unexpected response format");
@@ -172,17 +176,42 @@ const Profile = () => {
         setLoadingProfile(false);
       }
     };
+
+    // const fetchUserNotifications = async () => {
+    //   try {
+    //     setLoadingNotifications(true);
+    //     const response = await fetchNotifications();
+    //     setNotifications(response.data || []);
+    //   } catch (error) {
+    //     console.error("Failed to fetch notifications:", error);
+    //   } finally {
+    //     setLoadingNotifications(false);
+    //   }
+    // };
+
     fetchUserProfile();
+    // fetchUserNotifications();
   }, []);
 
   const handleDismissNotification = (id) => {
-    setNotifications(
-      notifications.filter((notification) => notification.id !== id)
-    );
+    setNotifications(notifications.filter((n) => n.id !== id));
   };
 
   const handleEventClick = (eventId) => {
     navigate(`/events/${eventId}`);
+  };
+
+  const handleCreateEvent = async (eventData) => {
+    try {
+      const response = await createEvent(eventData);
+      setProfileData((prev) => ({
+        ...prev,
+        eventsCreated: [...(prev.eventsCreated || []), response.data],
+      }));
+      setIsEventModalOpen(false);
+    } catch (error) {
+      setError("Failed to create event",error);
+    }
   };
 
   const quickActions = [
@@ -236,11 +265,6 @@ const Profile = () => {
     feedback: { label: "My Feedback", visible: isAdmin || isOrganizer },
     organizers: { label: "Organizers", visible: isAdmin },
     attendees: { label: "Attendees", visible: isAdmin },
-    eventOrganizers: { label: "Event Organizers", visible: isAdmin },
-    eventAttendees: {
-      label: "Event Attendees",
-      visible: isAdmin || isOrganizer,
-    },
   };
 
   return (
@@ -259,7 +283,7 @@ const Profile = () => {
             <button
               onClick={() => setShowNotificationsPanel(!showNotificationsPanel)}
               className="relative"
-              aria-label="Notifications"
+              aria-label="Toggle notifications panel"
             >
               <Bell className="text-gray-600 hover:text-blue-600" size={24} />
               {notifications.length > 0 && (
@@ -275,11 +299,14 @@ const Profile = () => {
                   <button
                     onClick={() => setShowNotificationsPanel(false)}
                     className="text-gray-500 hover:text-gray-700"
+                    aria-label="Close notifications panel"
                   >
                     ×
                   </button>
                 </div>
-                {notifications.length === 0 ? (
+                {loadingNotifications ? (
+                  <LoadingSpinner />
+                ) : notifications.length === 0 ? (
                   <p className="text-gray-500 text-center py-2">
                     No new notifications
                   </p>
@@ -317,10 +344,10 @@ const Profile = () => {
               <span
                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
                   userData?.Role__c === "Admin"
-                    ? "bg-red-500 text-white" // Administrator - Red
+                    ? "bg-red-500 text-white"
                     : userData?.Role__c === "Organizer"
-                    ? "bg-blue-500 text-white" // Event Organizer - Blue
-                    : "bg-gray-500 text-white" // User - Gray
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-500 text-white"
                 }`}
               >
                 {userData?.Role__c === "Admin"
@@ -330,7 +357,6 @@ const Profile = () => {
                   : "User"}
               </span>
             </p>
-
             <p className="text-gray-600">ID: {userData?.Id}</p>
           </div>
           <button
@@ -359,7 +385,7 @@ const Profile = () => {
                 </div>
                 {(isAdmin || isOrganizer) && (
                   <button
-                    onClick={() => navigate("/events/new")}
+                    onClick={() => setIsEventModalOpen(true)}
                     className="flex items-center text-blue-600 hover:text-blue-700"
                   >
                     <Plus size={18} className="mr-1" /> Add Event
@@ -420,7 +446,7 @@ const Profile = () => {
                       You haven't created any events yet
                     </p>
                     <button
-                      onClick={() => navigate("/events/new")}
+                      onClick={() => setIsEventModalOpen(true)}
                       className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                     >
                       Create Your First Event
@@ -498,24 +524,6 @@ const Profile = () => {
               </div>
             )}
 
-            {activeTab === "eventOrganizers" && isAdmin && (
-              <div className="space-y-4">
-                {/* Placeholder for event-specific organizers */}
-                <p className="text-gray-600 text-center py-4">
-                  Event organizer list placeholder
-                </p>
-              </div>
-            )}
-
-            {activeTab === "eventAttendees" && (isAdmin || isOrganizer) && (
-              <div className="space-y-4">
-                {/* Placeholder for event-specific attendees */}
-                <p className="text-gray-600 text-center py-4">
-                  Event attendees list placeholder
-                </p>
-              </div>
-            )}
-
             <button
               onClick={() => navigate("/events")}
               className="mt-6 text-blue-600 hover:underline inline-flex items-center"
@@ -531,7 +539,9 @@ const Profile = () => {
                 Notifications
               </h3>
             </div>
-            {notifications.length === 0 ? (
+            {loadingNotifications ? (
+              <LoadingSpinner />
+            ) : notifications.length === 0 ? (
               <p className="text-gray-600 text-center py-4">
                 No new notifications
               </p>
@@ -586,6 +596,13 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      <EventModal
+        isOpen={isEventModalOpen}
+        onClose={() => setIsEventModalOpen(false)}
+        onSubmit={handleCreateEvent}
+        loading={false}
+      />
     </div>
   );
 };
