@@ -1,20 +1,17 @@
-const NotificationItem = ({ notification, onDismiss }) => (
+import { ExternalLink } from "lucide-react";
+
+const NotificationItem = ({ notification, onDismiss }) => {
+  const typeStyles = {
+    info: "bg-blue-50 border-blue-200",
+    event: "bg-purple-50 border-purple-200",
+    warning: "bg-yellow-50 border-yellow-200",
+    success: "bg-green-50 border-green-200",
+    error: "bg-red-50 border-red-200",
+  };
+
+  return (
     <div
-      className={`
-        p-4 rounded-md mb-2 relative
-        ${
-          notification.type === "info"
-            ? "bg-blue-50 border-blue-200"
-            : notification.type === "event"
-            ? "bg-purple-50 border-purple-200"
-            : notification.type === "warning"
-            ? "bg-yellow-50 border-yellow-200"
-            : notification.type === "success"
-            ? "bg-green-50 border-green-200" // Added success type
-            : "bg-red-50 border-red-200"
-        }
-        border
-      `}
+      className={`p-4 rounded-md mb-2 relative border ${typeStyles[notification.type] || typeStyles.error}`}
     >
       <button
         onClick={() => onDismiss(notification.id)}
@@ -34,3 +31,6 @@ const NotificationItem = ({ notification, onDismiss }) => (
       )}
     </div>
   );
+};
+
+export default NotificationItem;

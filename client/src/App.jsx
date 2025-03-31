@@ -10,6 +10,7 @@ import Events from './pages/Events';
 import EventDetail from './pages/EventDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
+import Billing from './pages/Billing';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
           {/* Private Router */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/billing" element={<Billing /> }/>
         </Routes>
       </Router>
     </AuthProvider>
