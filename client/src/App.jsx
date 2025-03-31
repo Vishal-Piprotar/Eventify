@@ -11,6 +11,7 @@ import EventDetail from './pages/EventDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
 import Billing from './pages/Billing';
+import AccountSettings from './pages/AccountSettings';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           {/* Private Router */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/billing" element={<Billing /> }/>
+          <Route path="/settings" element={<AccountSettings /> }/>
         </Routes>
       </Router>
     </AuthProvider>
