@@ -42,6 +42,10 @@ export const loginUser = (credentials) =>
 export const getUserProfile = () =>
   api.get("/auth/profile").then((res) => res.data);
 
+export const editUserProfile = (profileData) =>
+  api.put("/auth/profile", profileData).then((res) => res.data);
+  
+
 // Event APIs
 export const fetchEvents = () => api.get("/events").then((res) => res.data);
 

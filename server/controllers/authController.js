@@ -146,3 +146,48 @@ export const getProfile = async (req, res) => {
     });
   }
 };
+
+
+export const editProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User must be authenticated to update profile',
+      });
+    }
+
+    const { name, email, role } = req.body;
+    const validRoles = ["Admin", "Attandee", "Organizer"];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ error: "Invalid role" });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.Name = name;
+    if (email) updateFields.Email__c = email;
+    if (role) updateFields.Role__c = role;
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    const response = await conn.get().sobject("Custom_Users__c").update({
+      Id: userId,
+      ...updateFields,
+    });
+
+    if (!response.success) {
+      return res.status(400).json({ error: "Profile update failed" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+    });
+  } catch (error) {
+    console.error("Edit profile error:", error.message);
+    res.status(500).json({ error: "Server error", message: error.message });
+  }
+};

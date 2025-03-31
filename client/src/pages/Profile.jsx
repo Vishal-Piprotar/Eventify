@@ -12,29 +12,24 @@ import {
   ExternalLink,
   Star,
 } from "lucide-react";
-import {
-  getUserProfile,
-  // fetchNotifications,
-  createEvent,
-} from "../utils/api.js";
+import { getUserProfile, editUserProfile, createEvent } from "../utils/api.js";
 import EventModal from "../components/EventModal.jsx";
 
+// QuickActionCard Component
 const QuickActionCard = ({ icon: Icon, title, description, onClick }) => (
   <div
     onClick={onClick}
     className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer group"
   >
     <div className="flex items-center mb-3">
-      <Icon
-        className="text-blue-600 group-hover:text-blue-700 mr-3"
-        size={24}
-      />
+      <Icon className="text-blue-600 group-hover:text-blue-700 mr-3" size={24} />
       <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
     </div>
     <p className="text-gray-600 text-sm">{description}</p>
   </div>
 );
 
+// EventPreview Component
 const EventPreview = ({ event, onEventClick }) => {
   const normalizedEvent = {
     id: event.id || event.Id,
@@ -43,7 +38,6 @@ const EventPreview = ({ event, onEventClick }) => {
     status: event.status || event.Status__c || "Registered",
     registrationStatus: event.Registration_Status__c,
   };
-
   return (
     <div
       onClick={() => onEventClick(normalizedEvent.id)}
@@ -82,6 +76,7 @@ const EventPreview = ({ event, onEventClick }) => {
   );
 };
 
+// NotificationItem Component (Updated with "success" type)
 const NotificationItem = ({ notification, onDismiss }) => (
   <div
     className={`
@@ -93,7 +88,9 @@ const NotificationItem = ({ notification, onDismiss }) => (
           ? "bg-purple-50 border-purple-200"
           : notification.type === "warning"
           ? "bg-yellow-50 border-yellow-200"
-          : "bg-green-50 border-green-200"
+          : notification.type === "success"
+          ? "bg-green-50 border-green-200" // Added success type
+          : "bg-red-50 border-red-200"
       }
       border
     `}
@@ -101,7 +98,7 @@ const NotificationItem = ({ notification, onDismiss }) => (
     <button
       onClick={() => onDismiss(notification.id)}
       className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-      aria-label={`Dismiss notification: ${notification.message}`}
+      aria-label={`Dismiss ${notification.type} notification`}
     >
       ×
     </button>
@@ -117,12 +114,14 @@ const NotificationItem = ({ notification, onDismiss }) => (
   </div>
 );
 
+// LoadingSpinner Component
 const LoadingSpinner = () => (
   <div className="flex justify-center items-center py-4">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
   </div>
 );
 
+// FeedbackItem Component
 const FeedbackItem = ({ feedback }) => (
   <div className="bg-white p-4 rounded-lg shadow-md mb-3">
     <div className="flex items-center mb-2">
@@ -148,16 +147,38 @@ const FeedbackItem = ({ feedback }) => (
   </div>
 );
 
+// Profile Component
 const Profile = () => {
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      message: "Your subscription renews in 5 days",
+      type: "info",
+      actionUrl: "/billing",
+    },
+    {
+      id: 2,
+      message: "New event scheduled: Team Meeting",
+      type: "event",
+      actionUrl: "/events/123",
+    },
+    {
+      id: 3,
+      message: "Event registration successful!",
+      type: "success", // New success notification
+      actionUrl: "/events/registration-success",
+    },
+  ]);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [loadingNotifications, setLoadingNotifications] = useState(true);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [error, setError] = useState("");
   const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
   const [activeTab, setActiveTab] = useState("registered");
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -176,21 +197,7 @@ const Profile = () => {
         setLoadingProfile(false);
       }
     };
-
-    // const fetchUserNotifications = async () => {
-    //   try {
-    //     setLoadingNotifications(true);
-    //     const response = await fetchNotifications();
-    //     setNotifications(response.data || []);
-    //   } catch (error) {
-    //     console.error("Failed to fetch notifications:", error);
-    //   } finally {
-    //     setLoadingNotifications(false);
-    //   }
-    // };
-
     fetchUserProfile();
-    // fetchUserNotifications();
   }, []);
 
   const handleDismissNotification = (id) => {
@@ -210,7 +217,46 @@ const Profile = () => {
       }));
       setIsEventModalOpen(false);
     } catch (error) {
-      setError("Failed to create event",error);
+      setError("Failed to create event: " + error.message);
+    }
+  };
+
+  const handleEditToggle = () => {
+    if (!isEditing) {
+      setEditFormData({
+        name: profileData?.userDetails?.Name || "",
+        email: profileData?.userDetails?.Email__c || "",
+        role: profileData?.userDetails?.Role__c || "",
+      });
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await editUserProfile(editFormData);
+      if (response.success) {
+        setProfileData((prev) => ({
+          ...prev,
+          userDetails: {
+            ...prev.userDetails,
+            Name: editFormData.name,
+            Email__c: editFormData.email,
+            Role__c: editFormData.role,
+          },
+        }));
+        setIsEditing(false);
+      } else {
+        setError("Failed to update profile");
+      }
+    } catch (error) {
+      setError("Failed to update profile: " + error.message);
     }
   };
 
@@ -249,7 +295,6 @@ const Profile = () => {
   const feedbacks = profileData?.Feedbacks || [];
   const organizers = profileData?.organizers || [];
   const attendees = profileData?.attendees || [];
-
   const registeredEvents = eventsRegistered.map((registration) => ({
     ...registration,
     ...registration.Events__r,
@@ -270,6 +315,7 @@ const Profile = () => {
   return (
     <div className="bg-gray-50 min-h-screen p-2 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
           <div className="text-center sm:text-left mb-4 sm:mb-0">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
@@ -324,55 +370,120 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-6">
             <p>{error}</p>
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 flex flex-col items-center sm:flex-row">
-          <div className="bg-blue-100 rounded-full p-3 mb-4 sm:mb-0 sm:mr-6">
-            <User className="text-blue-600" size={36} />
-          </div>
-          <div className="text-center sm:text-left flex-1">
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">
-              {userData?.Name}
-            </h2>
-            <p className="text-gray-600">Email: {userData?.Email__c}</p>
-            <p className="text-gray-600 flex items-center gap-2">
-              Role:{" "}
-              <span
-                className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  userData?.Role__c === "Admin"
-                    ? "bg-red-500 text-white"
-                    : userData?.Role__c === "Organizer"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-500 text-white"
-                }`}
+        {/* Profile Card */}
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          {!isEditing ? (
+            <div className="flex flex-col items-center sm:flex-row">
+              <div className="bg-blue-100 rounded-full p-3 mb-4 sm:mb-0 sm:mr-6">
+                <User className="text-blue-600" size={36} />
+              </div>
+              <div className="text-center sm:text-left flex-1">
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">
+                  {userData?.Name}
+                </h2>
+                <p className="text-gray-600">Email: {userData?.Email__c}</p>
+                <p className="text-gray-600 flex items-center gap-2 justify-center sm:justify-start">
+                  Role:{" "}
+                  <span
+                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      userData?.Role__c === "Admin"
+                        ? "bg-red-500 text-white"
+                        : userData?.Role__c === "Organizer"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-500 text-white"
+                    }`}
+                  >
+                    {userData?.Role__c === "Admin"
+                      ? "Administrator"
+                      : userData?.Role__c === "Organizer"
+                      ? "Event Organizer"
+                      : "User"}
+                  </span>
+                </p>
+                <p className="text-gray-600">ID: {userData?.Id}</p>
+              </div>
+              <button
+                onClick={handleEditToggle}
+                className="mt-4 sm:mt-0 w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
-                {userData?.Role__c === "Admin"
-                  ? "Administrator"
-                  : userData?.Role__c === "Organizer"
-                  ? "Event Organizer"
-                  : "User"}
-              </span>
-            </p>
-            <p className="text-gray-600">ID: {userData?.Id}</p>
-          </div>
-          <button
-            onClick={() => navigate("/settings")}
-            className="mt-4 sm:mt-0 w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Edit Profile
-          </button>
+                Edit Profile
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={editFormData.name}
+                  onChange={handleEditChange}
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={editFormData.email}
+                  onChange={handleEditChange}
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">
+                  Role
+                </label>
+                <input
+                  type="text"
+                  name="role"
+                  value={editFormData.role}
+                  onChange={handleEditChange}
+                  className="w-full px-3 py-2 border rounded-md"
+                  disabled={!isAdmin}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={handleEditToggle}
+                  className="px-4 py-2 border rounded-md hover:bg-gray-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
+        {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           {quickActions.map((action, index) => (
             <QuickActionCard key={index} {...action} />
           ))}
         </div>
 
+        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-4 sm:p-6">
             <div className="border-b pb-4 mb-4">
@@ -411,7 +522,6 @@ const Profile = () => {
                 )}
               </div>
             </div>
-
             {activeTab === "registered" && (
               <div className="space-y-4">
                 {registeredEvents.length === 0 ? (
@@ -437,7 +547,6 @@ const Profile = () => {
                 )}
               </div>
             )}
-
             {activeTab === "created" && (isAdmin || isOrganizer) && (
               <div className="space-y-4">
                 {eventsCreated.length === 0 ? (
@@ -463,7 +572,6 @@ const Profile = () => {
                 )}
               </div>
             )}
-
             {activeTab === "feedback" && (isAdmin || isOrganizer) && (
               <div>
                 {feedbacks.length === 0 ? (
@@ -479,7 +587,6 @@ const Profile = () => {
                 )}
               </div>
             )}
-
             {activeTab === "organizers" && isAdmin && (
               <div className="space-y-4">
                 {organizers.length === 0 ? (
@@ -501,7 +608,6 @@ const Profile = () => {
                 )}
               </div>
             )}
-
             {activeTab === "attendees" && isAdmin && (
               <div className="space-y-4">
                 {attendees.length === 0 ? (
@@ -523,7 +629,6 @@ const Profile = () => {
                 )}
               </div>
             )}
-
             <button
               onClick={() => navigate("/events")}
               className="mt-6 text-blue-600 hover:underline inline-flex items-center"
@@ -532,6 +637,7 @@ const Profile = () => {
             </button>
           </div>
 
+          {/* Notifications Sidebar */}
           <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <div className="flex items-center mb-4">
               <Bell className="text-blue-600 mr-3" size={24} />
@@ -565,6 +671,7 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Support Section */}
         <div className="mt-6 bg-blue-50 rounded-lg p-4 sm:p-6 flex flex-col md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col md:flex-row md:items-center mb-4 md:mb-0">
             <HelpCircle
@@ -595,14 +702,15 @@ const Profile = () => {
             </button>
           </div>
         </div>
-      </div>
 
-      <EventModal
-        isOpen={isEventModalOpen}
-        onClose={() => setIsEventModalOpen(false)}
-        onSubmit={handleCreateEvent}
-        loading={false}
-      />
+        {/* Event Modal */}
+        <EventModal
+          isOpen={isEventModalOpen}
+          onClose={() => setIsEventModalOpen(false)}
+          onSubmit={handleCreateEvent}
+          loading={false}
+        />
+      </div>
     </div>
   );
 };
