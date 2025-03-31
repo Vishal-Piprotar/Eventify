@@ -10,6 +10,7 @@ import {
   CheckCircle,
   AlertCircle,
   ArrowLeft,
+  XCircle,
 } from "lucide-react";
 import { registerUser } from "../utils/api.js";
 import { FormInput } from "../components/ui/FormInput";
@@ -378,12 +379,7 @@ const Register = () => {
               className={screenSize === "mobile" ? "text-xs py-2" : ""}
             />
           )}
-
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-4 sm:gap-5"
-          >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
             <div
               className={`transition-all duration-300 transform ${
                 animateIn
