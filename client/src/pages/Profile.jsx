@@ -503,7 +503,7 @@ const Profile = () => {
                   </button>
                 )}
               </div>
-              <div className="flex flex-wrap border-b gap-2">
+              <div className="flex flex-wrap  gap-2">
                 {Object.entries(availableTabs).map(
                   ([key, { label, visible }]) =>
                     visible && (
