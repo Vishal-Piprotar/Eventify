@@ -1,8 +1,9 @@
 import conn from "../config/salesforce.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import axios from 'axios';
+import axios from "axios";
 
+// Register user
 export const register = async (req, res) => {
   const { name, email, password, role } = req.body;
 
@@ -16,6 +17,7 @@ export const register = async (req, res) => {
       .get()
       .sobject("Custom_Users__c")
       .findOne({ Email__c: email }, "Id");
+
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered" });
     }
@@ -45,6 +47,7 @@ export const register = async (req, res) => {
   }
 };
 
+// Login user
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -84,48 +87,27 @@ export const login = async (req, res) => {
   }
 };
 
-
-// Base URL for Salesforce REST API profile endpoint
+// Salesforce API base
 const getSfApiBaseUrl = () => `${conn.get().instanceUrl}/services/apexrest/profile`;
+const getAuthHeader = (userId) => ({
+  headers: {
+    'Authorization': `Bearer ${conn.get().accessToken}`,
+    'Content-Type': 'application/json',
+    'X-User-Id': userId,
+  },
+});
 
-
-// Helper function to generate auth headers
-const getAuthHeader = (userId) => {
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-  return {
-    headers: {
-      'Authorization': `Bearer ${conn.get().accessToken}`,
-      'Content-Type': 'application/json',
-      'X-User-Id': userId,
-    },
-  };
-};
-
-
+// Get Profile
 export const getProfile = async (req, res) => {
   try {
     const userId = req.headers['x-user-id'] || req.user.id;
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User must be authenticated to access profile',
-      });
-    }
 
     const response = await axios.get(getSfApiBaseUrl(), getAuthHeader(userId));
-
-    if (response.data.statusCode !== 200) {
-      return res.status(response.data.statusCode || 400).json({
-        error: 'Fetch Failed',
-        message: response.data.message || 'Failed to fetch profile from Salesforce',
-      });
-    }
-
     const profileData = typeof response.data.data === 'string'
       ? JSON.parse(response.data.data)
       : response.data.data;
+      console.log(profileData);
+      
 
     res.status(200).json({
       success: true,
@@ -133,33 +115,18 @@ export const getProfile = async (req, res) => {
       data: profileData,
     });
   } catch (error) {
-    console.error('Get profile error:', {
-      message: error.message,
-      stack: error.stack,
-      response: error.response?.data,
-    });
-
-    const status = error.response?.status || 500;
-    res.status(status).json({
-      error: status === 500 ? 'Server Error' : 'Fetch Failed',
-      message: error.response?.data?.message || error.message || 'Failed to fetch profile',
-    });
+    console.error('Get profile error:', error.message);
+    res.status(500).json({ error: "Failed to fetch profile" });
   }
 };
 
-
+// Edit Profile
 export const editProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User must be authenticated to update profile',
-      });
-    }
-
-    const { name, email, role } = req.body;
+    const { name, email, role, phone } = req.body;
     const validRoles = ["Admin", "Attandee", "Organizer"];
+
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ error: "Invalid role" });
     }
@@ -168,10 +135,7 @@ export const editProfile = async (req, res) => {
     if (name) updateFields.Name = name;
     if (email) updateFields.Email__c = email;
     if (role) updateFields.Role__c = role;
-
-    if (Object.keys(updateFields).length === 0) {
-      return res.status(400).json({ error: "No valid fields to update" });
-    }
+    if (phone !== undefined) updateFields.Phone__c = phone;
 
     const response = await conn.get().sobject("Custom_Users__c").update({
       Id: userId,
@@ -188,6 +152,84 @@ export const editProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Edit profile error:", error.message);
-    res.status(500).json({ error: "Server error", message: error.message });
+    res.status(500).json({ error: "Server error" });
   }
 };
+
+// change password
+export const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user?.id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    const user = await conn.get().sobject("Custom_Users__c").findOne(
+      { Id: userId },
+      "Id, Password__c"
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.Password__c);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const response = await conn.get().sobject("Custom_Users__c").update({
+      Id: userId,
+      Password__c: hashedPassword,
+    });
+
+    if (!response.success) {
+      return res.status(500).json({ error: "Failed to update password" });
+    }
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Change password error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+export const deleteUser = async (req, res) => {
+  const userId = req.user?.id;
+  const force = req.query.force === 'true';
+
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    // Check for attendee associations
+    const attendees = await conn.get().sobject('Attandee__c')
+      .find({ Custom_Users__c: userId })
+      .limit(1);
+
+    if (attendees.length && !force) {
+      return res.status(409).json({
+        success: false,
+        message: "Account is linked with attendee records. Admin access required for force deletion."
+      });
+    }
+
+    const result = await conn.get().sobject('Custom_Users__c').destroy(userId);
+
+    if (result.success) {
+      return res.status(200).json({ success: true, message: 'Account deleted successfully' });
+    }
+
+    throw new Error("Salesforce failed to delete user.");
+  } catch (err) {
+    console.error("Account delete error:", err.message);
+    return res.status(500).json({ error: "Server error", details: err.message });
+  }
+};
+
