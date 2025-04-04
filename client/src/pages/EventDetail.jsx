@@ -3,14 +3,24 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, Users, MapPin, ArrowLeft, Calendar, Share2, Heart, MessageCircle, AlertCircle } from 'lucide-react';
 import { getEventById, api } from "../utils/api.js";
-import { useAuth } from '../context/AuthContext'; // Add this import
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+
+// Common dummy image URL
+const DUMMY_IMAGE_URL = 'https://cdn.prod.website-files.com/66e5292bfdb35c76b373b99c/66e5292bfdb35c76b373bb1a_img_sundays_0002.webp';
+
+// Skeleton Component
+const Skeleton = ({ width = "w-full", height = "h-4", className = "" }) => (
+  <div
+    className={`bg-gray-200 dark:bg-gray-700 rounded animate-pulse ${width} ${height} ${className}`}
+  />
+);
 
 const EventDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth(); // Add auth hook
-  const { theme } = useTheme(); // Theme hook, used only when authenticated
+  const { isAuthenticated, user } = useAuth(); // Assume user object with id
+  const { theme } = useTheme();
 
   const [event, setEvent] = useState(null);
   const [attendees, setAttendees] = useState([]);
@@ -24,11 +34,16 @@ const EventDetail = () => {
     const fetchEventDetails = async () => {
       try {
         const eventData = await getEventById(id);
-        const attendeesRes = await api.get(`/events/${id}/attendees`);
+        const attendeesRes = await api.get(`/attendees/${id}`); // Adjusted to match route
         const attendeesData = attendeesRes.data;
 
         setEvent(eventData.data);
-        setAttendees(attendeesData.attendees || []);
+        setAttendees(attendeesData.data.attendees || []);
+
+        // Check if the current user is already registered
+        if (user && attendeesData.data.attendees.some(att => att.userId === user.id)) {
+          setRegistrationStatus('confirmed');
+        }
       } catch (error) {
         setError(error.response?.data?.message || error.message || 'Failed to fetch event details');
       } finally {
@@ -37,7 +52,7 @@ const EventDetail = () => {
     };
 
     fetchEventDetails();
-  }, [id]);
+  }, [id, user]);
 
   const isEventEnded = event ? new Date(event.endDate) < new Date() : false;
   const isUpcoming = event ? new Date(event.startDate) > new Date() : false;
@@ -53,13 +68,47 @@ const EventDetail = () => {
   };
 
   const handleRegister = async () => {
-    if (!isEventEnded) {
+    if (!isAuthenticated) {
+      setError('You must be logged in to register.');
+      return;
+    }
+    if (!isEventEnded && registrationStatus !== 'confirmed') {
       try {
+        const attendeeData = {
+          name: user.name || 'Anonymous', // Assume user has a name
+          email: user.email, // Assume user has an email
+          eventId: id,
+        };
+        const response = await api.post('/attendees', attendeeData, {
+          headers: { 'X-User-Id': user.id },
+        });
         setRegistrationStatus('confirmed');
+        setAttendees(prev => [...prev, response.data.data]); // Add new attendee to list
       } catch (error) {
-        setError('Failed to register for the event', error);
+        setError(error.response?.data?.message || 'Failed to register for the event');
       }
     }
+  };
+
+  const handleCancelRegistration = async () => {
+    if (!isAuthenticated || !user) {
+      setError('You must be logged in to cancel registration.');
+      return;
+    }
+    // try {
+    //   const attendee = attendees.find(att => att.userId === user.id);
+    //   if (!attendee) {
+    //     setError('You are not registered for this event.');
+    //     return;
+    //   }
+    //   await api.put(`/attendees/${attendee.id}`, {}, {
+    //     headers: { 'X-User-Id': user.id },
+    //   });
+    //   setRegistrationStatus('not-registered');
+    //   setAttendees(prev => prev.filter(att => att.id !== attendee.id));
+    // } catch (error) {
+    //   setError(error.response?.data?.message || 'Failed to cancel registration');
+    // }
   };
 
   const handleLikeToggle = async () => {
@@ -76,10 +125,91 @@ const EventDetail = () => {
 
   if (loading) {
     return (
-      <div className={isAuthenticated ? 'min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900' : 'min-h-screen flex items-center justify-center bg-gray-50'}>
-        <div className="text-center">
-          <div className={isAuthenticated ? 'w-16 h-16 border-4 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-4' : 'w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4'}></div>
-          <p className={isAuthenticated ? 'text-gray-600 dark:text-gray-400' : 'text-gray-600'}>Loading event details...</p>
+      <div className={isAuthenticated ? 'min-h-screen bg-gray-100 dark:bg-gray-900' : 'min-h-screen bg-gray-100'}>
+        {/* Sticky Header Skeleton */}
+        <div className={isAuthenticated ? 'sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-md' : 'sticky top-0 z-10 bg-white shadow-md'}>
+          <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <Skeleton width="w-20" height="h-6" />
+            <div className="flex items-center space-x-4">
+              <Skeleton width="w-16" height="h-6" />
+              <Skeleton width="w-16" height="h-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Section Skeleton */}
+        <div className="relative h-96">
+          <Skeleton height="h-full" />
+        </div>
+
+        {/* Main Content Skeleton */}
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Left Column Skeleton */}
+            <div className="md:w-2/3 space-y-8">
+              <Skeleton height="h-32" />
+              <div className={isAuthenticated ? 'bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6' : 'bg-white rounded-xl shadow-sm p-6'}>
+                <Skeleton width="w-1/3" height="h-6" className="mb-4" />
+                <Skeleton height="h-24" />
+              </div>
+              <div className={isAuthenticated ? 'bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6' : 'bg-white rounded-xl shadow-sm p-6'}>
+                <Skeleton width="w-1/3" height="h-6" className="mb-4" />
+                <div className="space-y-6">
+                  <div className="flex items-start space-x-4">
+                    <Skeleton width="w-12" height="h-12" className="rounded-lg" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton width="w-1/2" height="h-5" />
+                      <Skeleton width="w-3/4" height="h-4" />
+                      <Skeleton width="w-1/4" height="h-3" />
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-4">
+                    <Skeleton width="w-12" height="h-12" className="rounded-lg" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton width="w-1/2" height="h-5" />
+                      <Skeleton width="w-3/4" height="h-4" />
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-4">
+                    <Skeleton width="w-12" height="h-12" className="rounded-lg" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton width="w-1/2" height="h-5" />
+                      <Skeleton width="w-3/4" height="h-4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column Skeleton */}
+            <div className="md:w-1/3 space-y-6">
+              <div className={isAuthenticated ? 'bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6' : 'bg-white rounded-xl shadow-sm p-6'}>
+                <Skeleton width="w-1/3" height="h-6" className="mb-4" />
+                <div className="flex items-center space-x-4">
+                  <Skeleton width="w-12" height="h-12" className="rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton width="w-1/2" height="h-5" />
+                    <Skeleton width="w-1/3" height="h-4" />
+                  </div>
+                </div>
+                <Skeleton width="w-full" height="h-10" className="mt-4" />
+              </div>
+              <div className={isAuthenticated ? 'bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6' : 'bg-white rounded-xl shadow-sm p-6'}>
+                <Skeleton width="w-1/3" height="h-6" className="mb-4" />
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-start space-x-3">
+                      <Skeleton width="w-16" height="h-16" className="rounded-lg" />
+                      <div className="space-y-2">
+                        <Skeleton width="w-2/3" height="h-4" />
+                        <Skeleton width="w-1/2" height="h-3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -162,9 +292,12 @@ const EventDetail = () => {
       {/* Hero Section with Image */}
       <div className="relative h-96">
         <img
-          src={`https://picsum.photos/seed/${id}/1600/900`}
+          src={event.imageUrl || DUMMY_IMAGE_URL}
           alt={`${event.name} cover`}
           className="w-full h-full object-cover"
+          onError={(e) => {
+            e.target.src = DUMMY_IMAGE_URL;
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end">
           <div className="max-w-6xl mx-auto px-4 py-8 w-full">
@@ -272,9 +405,17 @@ const EventDetail = () => {
                 )}
                 
                 {registrationStatus === 'confirmed' && (
-                  <button className={isAuthenticated ? 'mt-4 w-full md:w-auto px-6 py-3 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 font-medium rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors' : 'mt-4 w-full md:w-auto px-6 py-3 border border-green-300 text-green-700 font-medium rounded-lg hover:bg-green-50 transition-colors'}>
-                    Add to Calendar
-                  </button>
+                  <div className="mt-4 flex space-x-4">
+                    <button className={isAuthenticated ? 'w-full md:w-auto px-6 py-3 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 font-medium rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors' : 'w-full md:w-auto px-6 py-3 border border-green-300 text-green-700 font-medium rounded-lg hover:bg-green-50 transition-colors'}>
+                      Add to Calendar
+                    </button>
+                    <button
+                      onClick={handleCancelRegistration}
+                      className={isAuthenticated ? 'w-full md:w-auto px-6 py-3 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors' : 'w-full md:w-auto px-6 py-3 border border-red-300 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors'}
+                    >
+                      Cancel Registration
+                    </button>
+                  </div>
                 )}
               </div>
             )}

@@ -1,84 +1,188 @@
+/* eslint-disable no-unused-vars */
 import React from 'react';
-import { Clock, Users, Globe } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext'; // Add this import
+import { Clock, Users, MapPin, Calendar, Star, ChevronRight } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+
+// Common dummy image URL
+const DUMMY_IMAGE_URL = 'https://cdn.prod.website-files.com/66e5292bfdb35c76b373b99c/66e5292bfdb35c76b373bb1a_img_sundays_0002.webp';
 
 const EventCard = ({ event, onClick }) => {
+  const { theme } = useTheme();
   
-  // eslint-disable-next-line no-unused-vars
-  const { theme } = useTheme(); // Add theme hook
-  const isExpired = new Date(event.endDate) < new Date();
-  const isUpcoming = new Date(event.startDate) > new Date();
-
-  // Use a static dummy image URL or generate dynamically
-  const dummyImageUrl =
-    'https://img.freepik.com/free-photo/back-view-crowd-fans-watching-live-performance-music-concert-night-copy-space_637285-544.jpg?ga=GA1.1.23714335.1741542781&semt=ais_hybrid';
+  const now = new Date();
+  const start = new Date(event.startDate);
+  const end = new Date(event.endDate);
+  
+  const isUpcoming = start > now;
+  const isExpired = end < now;
+  const isOngoing = !isUpcoming && !isExpired;
+  
+  // Calculate days remaining for upcoming events
+  const getDaysRemaining = () => {
+    if (!isUpcoming) return null;
+    const diffTime = Math.abs(start - now);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+  
+  const daysRemaining = getDaysRemaining();
+  
+  // Format dates in a consistent way
+  const formatEventDate = (date) => {
+    return date.toLocaleDateString(undefined, { 
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric'
+    });
+  };
+  
+  // Format time in 12-hour format
+  const formatEventTime = (date) => {
+    return date.toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+  
+  // Status badge configuration
+  const getStatusConfig = () => {
+    if (isUpcoming) {
+      return { 
+        label: daysRemaining === 1 ? 'Tomorrow' : daysRemaining === 0 ? 'Today' : `In ${daysRemaining} days`,
+        bgColor: 'bg-green-500',
+        textColor: 'text-white'
+      };
+    } else if (isOngoing) {
+      return { 
+        label: 'Happening now', 
+        bgColor: 'bg-yellow-500',
+        textColor: 'text-white'
+      };
+    } else {
+      return { 
+        label: 'Ended', 
+        bgColor: 'bg-gray-500',
+        textColor: 'text-white'
+      };
+    }
+  };
+  
+  const statusConfig = getStatusConfig();
+  
+  // Use event.imageUrl if provided, otherwise use the common dummy image
+  const imageUrl = event.imageUrl || DUMMY_IMAGE_URL;
 
   return (
-    <div
+    <div 
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-all cursor-pointer overflow-hidden group relative"
-      aria-label={`Event: ${event.name || 'Unnamed Event'}`}
+      className="group bg-white dark:bg-gray-800 overflow-hidden rounded-xl shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col h-full transform hover:-translate-y-1"
     >
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-30 group-hover:opacity-50 transition-opacity"
-        style={{ backgroundImage: `url(${dummyImageUrl})` }}
-      ></div>
-
-      {/* Overlay for better readability */}
-      <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-opacity"></div>
-
-      {/* Content */}
-      <div className="relative z-10 p-6">
-        {/* Badges */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex space-x-2">
-            {isUpcoming && (
-              <span className="bg-green-500 dark:bg-green-600 text-white text-xs font-medium px-2.5 py-0.5 rounded-full">
-                Upcoming
-              </span>
-            )}
-            {isExpired && (
-              <span className="bg-red-500 dark:bg-red-600 text-white text-xs font-medium px-2.5 py-0.5 rounded-full">
-                Expired
-              </span>
-            )}
-          </div>
-          <button
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm focus:outline-none"
-            aria-label="View event details"
-          >
-            View Details
-          </button>
+      {/* Image Section */}
+      <div className="relative h-48 overflow-hidden">
+        <img 
+          src={imageUrl} 
+          alt={event.name || 'Event Image'} 
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            // Fallback to gradient if image fails to load
+            e.target.style.display = 'none';
+            e.target.nextSibling.style.display = 'flex';
+          }}
+        />
+        {/* Fallback Gradient (hidden by default, shown if image fails) */}
+        <div 
+          className="h-full w-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-6 absolute inset-0 hidden"
+        >
+          <Calendar size={42} className="text-white/70" />
         </div>
-
-        {/* Event Title */}
-        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2 line-clamp-1">
+        
+        {/* Featured Badge (if applicable) */}
+        {event.featured && (
+          <div className="absolute top-0 left-0 w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-3 py-1 text-xs font-medium flex items-center justify-center">
+            <Star size={12} className="mr-1 fill-current" /> Featured Event
+          </div>
+        )}
+        
+        {/* Status Badge */}
+        <div className="absolute top-3 right-3">
+          <span className={`${statusConfig.bgColor} ${statusConfig.textColor} text-xs font-medium px-2.5 py-1 rounded-full shadow-sm`}>
+            {statusConfig.label}
+          </span>
+        </div>
+        
+        {/* Category Pill (if applicable) */}
+        {event.category && (
+          <div className="absolute bottom-3 left-3">
+            <span className="bg-black/70 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+              {event.category}
+            </span>
+          </div>
+        )}
+      </div>
+      
+      {/* Content Section */}
+      <div className="flex flex-col flex-grow p-4">
+        {/* Title */}
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
           {event.name || 'Unnamed Event'}
         </h3>
-
-        {/* Event Description */}
-        <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+        
+        {/* Description */}
+        <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-4 flex-grow">
           {event.description || 'No description available.'}
         </p>
-
-        {/* Event Details */}
-        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-          <p className="flex items-center">
-            <Clock className="mr-2" size={16} />
-            <span className="font-medium">Scheduled For: </span>
-            {new Date(event.startDate).toLocaleDateString()} -{' '}
-            {new Date(event.endDate).toLocaleDateString()}
-          </p>
-          <p className="flex items-center">
-            <Users className="mr-2" size={16} />
-            Capacity: {event.capacity || 'N/A'}
-          </p>
-          <p className="flex items-center">
-            <Globe className="mr-2" size={16} />
-            {event.location || 'Location TBD'}
-          </p>
+        
+        {/* Details Section */}
+        <div className="space-y-2 border-t border-gray-100 dark:border-gray-700 pt-3 mt-auto">
+          {/* Date & Time */}
+          <div className="flex justify-between items-center text-sm">
+            <div className="flex items-center text-gray-700 dark:text-gray-300">
+              <Clock size={15} className="mr-2 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+              <span>{formatEventDate(start)}</span>
+            </div>
+            <span className="text-gray-500 dark:text-gray-400 text-xs">
+              {formatEventTime(start)}
+            </span>
+          </div>
+          
+          {/* Location */}
+          <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+            <MapPin size={15} className="mr-2 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+            <span className="truncate">{event.location || 'Location TBD'}</span>
+          </div>
+          
+          {/* Capacity / Attendees */}
+          {event.capacity && (
+            <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+              <Users size={15} className="mr-2 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+              <div className="flex items-center">
+                <span>{event.attendees ? `${event.attendees}/${event.capacity}` : event.capacity} attendees</span>
+                
+                {/* Progress bar for capacity */}
+                {event.attendees && (
+                  <div className="ml-2 w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 dark:bg-blue-400" 
+                      style={{ width: `${Math.min(100, (event.attendees / event.capacity) * 100)}%` }}
+                    ></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+        
+        {/* Call To Action */}
+        <button 
+          className="mt-4 w-full py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-md transition-all flex items-center justify-center group-hover:shadow-md"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent double event firing
+            onClick();
+          }}
+        >
+          View Details <ChevronRight size={16} className="ml-1" />
+        </button>
       </div>
     </div>
   );

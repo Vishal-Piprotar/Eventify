@@ -1,23 +1,20 @@
+// routes/attendeeRoutes.js
+
 import express from 'express';
-import {
-  registerAttendee,
-  getEventAttendees,
-  cancelAttendee,
-  deleteAttendee,
-} from '../controllers/attendeeController.js';
+import attendeeController from '../controllers/attendeeController.js';
 
 const router = express.Router();
 
-// POST /api/attendees — Register a new attendee
-router.post('/', registerAttendee);
+// Register an attendee
+router.post('/', attendeeController.registerAttendee);
 
-// GET /api/attendees/:eventId — Get attendees for a specific event
-router.get('/:eventId', getEventAttendees);
+// Get attendees for an event
+router.get('/:eventId', attendeeController.getEventAttendees);
 
-// PUT /api/attendees/cancel/:attendeeId — Cancel a registration
-router.put('/cancel/:attendeeId', cancelAttendee);
+// Cancel a registration
+router.put('/:attendeeId', attendeeController.cancelAttendee);
 
-// DELETE /api/attendees/:attendeeId — Delete an attendee
-router.delete('/:attendeeId', deleteAttendee);
+// Delete attendee record
+router.delete('/:attendeeId', attendeeController.deleteAttendee);
 
 export default router;

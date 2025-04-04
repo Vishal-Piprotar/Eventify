@@ -1,3 +1,5 @@
+// controllers/attendeeController.js
+
 import axios from 'axios';
 import conn from '../config/salesforce.js';
 
@@ -20,7 +22,7 @@ const getDeleteHeader = (attendeeId) => {
     headers: {
       'Authorization': `Bearer ${conn.get().accessToken}`,
       'Content-Type': 'application/json',
-      'X-Attandee-Id': attendeeId, // required by Salesforce delete logic
+      'X-Attandee-Id': attendeeId,
     },
   };
 };
@@ -38,13 +40,6 @@ export const registerAttendee = async (req, res) => {
     const attendeeData = { Name: name, email, eventId };
     const response = await axios.post(getSfApiBaseUrl(), attendeeData, getAuthHeader(userId));
 
-    if (response.data.statusCode !== 201) {
-      return res.status(response.data.statusCode || 400).json({
-        error: 'Registration Failed',
-        message: response.data.message,
-      });
-    }
-
     const resultData = typeof response.data.data === 'string' ? JSON.parse(response.data.data) : response.data.data;
 
     res.status(201).json({
@@ -61,7 +56,6 @@ export const registerAttendee = async (req, res) => {
 export const getEventAttendees = async (req, res) => {
   try {
     const eventId = req.params.eventId;
-
     if (!eventId) return res.status(400).json({ error: 'Bad Request', message: 'Event ID is required' });
 
     const headers = {
@@ -70,11 +64,6 @@ export const getEventAttendees = async (req, res) => {
     };
 
     const response = await axios.get(`${getSfApiBaseUrl()}/${eventId}`, { headers });
-
-    if (response.data.statusCode !== 200) {
-      return res.status(response.data.statusCode || 400).json({ error: 'Fetch Failed', message: response.data.message });
-    }
-
     const attendees = typeof response.data.data === 'string' ? JSON.parse(response.data.data) : response.data.data;
 
     res.status(200).json({
@@ -92,16 +81,11 @@ export const cancelAttendee = async (req, res) => {
   try {
     const userId = req.headers['x-user-id'] || req.user?.id;
     const attendeeId = req.params.attendeeId;
-
     if (!userId || !attendeeId) {
       return res.status(400).json({ error: 'Bad Request', message: 'User ID and Attendee ID are required' });
     }
 
     const response = await axios.put(`${getSfApiBaseUrl()}/${attendeeId}`, {}, getAuthHeader(userId));
-
-    if (response.data.statusCode !== 200) {
-      return res.status(response.data.statusCode || 400).json({ error: 'Cancel Failed', message: response.data.message });
-    }
 
     res.status(200).json({
       success: true,
@@ -119,10 +103,6 @@ export const deleteAttendee = async (req, res) => {
     if (!attendeeId) return res.status(400).json({ error: 'Bad Request', message: 'Attendee ID is required' });
 
     const response = await axios.delete(getSfApiBaseUrl(), getDeleteHeader(attendeeId));
-
-    if (response.data.statusCode !== 200) {
-      return res.status(response.data.statusCode || 400).json({ error: 'Deletion Failed', message: response.data.message });
-    }
 
     res.status(200).json({
       success: true,
