@@ -11,7 +11,10 @@ import {
   Shield, 
   Save,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Check,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -22,7 +25,7 @@ const AccountSettings = () => {
   const navigate = useNavigate();
   const { updateUser, logout, user } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('general'); // Start with menu on mobile
+  const [activeTab, setActiveTab] = useState('menu'); // Start with menu on mobile
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -36,11 +39,18 @@ const AccountSettings = () => {
     confirmPassword: '',
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [notification, setNotification] = useState({ type: '', message: '', section: '' });
   const [deleteError, setDeleteError] = useState('');
+
+  // Clear notification after 5 seconds
+  useEffect(() => {
+    if (notification.message) {
+      const timer = setTimeout(() => {
+        setNotification({ type: '', message: '', section: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -61,13 +71,36 @@ const AccountSettings = () => {
           throw new Error(response?.message || 'Failed to fetch profile data');
         }
       } catch (err) {
-        setError(err.message || 'An error occurred while fetching your profile');
+        setNotification({ 
+          type: 'error', 
+          message: err.message || 'An error occurred while fetching your profile', 
+          section: 'general' 
+        });
       } finally {
         setLoading(false);
       }
     };
     fetchProfileData();
   }, []);
+
+  // Detect screen size on mount
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        // If we're on desktop and showing the menu, automatically show general
+        if (activeTab === 'menu') {
+          setActiveTab('general');
+        }
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeTab]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -87,8 +120,7 @@ const AccountSettings = () => {
 
   const handleUpdateDetails = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setNotification({ type: '', message: '', section: '' });
     try {
       const apiData = {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -103,29 +135,48 @@ const AccountSettings = () => {
           email: formData.email,
           phone: formData.phone,
         });
-        setSuccess('Profile updated successfully!');
+        setNotification({ 
+          type: 'success', 
+          message: 'Profile updated successfully!', 
+          section: 'general' 
+        });
       } else {
         throw new Error(response.message || 'Failed to update profile');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while updating your profile');
+      setNotification({ 
+        type: 'error', 
+        message: err.message || 'An error occurred while updating your profile', 
+        section: 'general' 
+      });
     }
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
+    setNotification({ type: '', message: '', section: '' });
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setPasswordError('All fields are required');
+      setNotification({ 
+        type: 'error', 
+        message: 'All fields are required', 
+        section: 'password' 
+      });
       return;
     }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError('New password and confirmation do not match');
+      setNotification({ 
+        type: 'error', 
+        message: 'New password and confirmation do not match', 
+        section: 'password' 
+      });
       return;
     }
     if (passwordData.newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters long');
+      setNotification({ 
+        type: 'error', 
+        message: 'New password must be at least 6 characters long', 
+        section: 'password' 
+      });
       return;
     }
     try {
@@ -134,7 +185,11 @@ const AccountSettings = () => {
         newPassword: passwordData.newPassword,
       });
       if (response.success) {
-        setPasswordSuccess(response.message || 'Password updated successfully!');
+        setNotification({ 
+          type: 'success', 
+          message: response.message || 'Password updated successfully!', 
+          section: 'password' 
+        });
         setPasswordData({
           currentPassword: '',
           newPassword: '',
@@ -144,9 +199,25 @@ const AccountSettings = () => {
         throw new Error(response.error || 'Failed to update password');
       }
     } catch (err) {
-      setPasswordError(err.message || 'An error occurred while updating your password');
+      setNotification({ 
+        type: 'error', 
+        message: err.message || 'An error occurred while updating your password', 
+        section: 'password' 
+      });
     }
   };
+
+  const handleUpdateNotifications = (e) => {
+    e.preventDefault();
+    setNotification({ 
+      type: 'success', 
+      message: 'Notification preferences saved successfully!', 
+      section: 'notifications' 
+    });
+  };
+
+
+
 
   const handlePaste = (e) => {
     e.preventDefault();
@@ -176,116 +247,154 @@ const AccountSettings = () => {
     }
   };
 
+  // Notification component
+  const NotificationMessage = ({ type, message, onClose }) => {
+    if (!message) return null;
+    
+    return (
+      <div className={`flex items-center justify-between mb-4 p-3 rounded-md ${
+        type === 'success' 
+          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-400' 
+          : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-400'
+      }`}>
+        <div className="flex items-center">
+          {type === 'success' ? (
+            <Check size={16} className="mr-2 text-green-500 dark:text-green-400" />
+          ) : (
+            <AlertCircle size={16} className="mr-2 text-red-500 dark:text-red-400" />
+          )}
+          <span className="text-sm">{message}</span>
+        </div>
+        <button 
+          onClick={onClose} 
+          className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    );
+  };
+
+  const menuItems = [
+    { id: 'general', icon: User, label: 'General' },
+    { id: 'password', icon: Key, label: 'Password' },
+    { id: 'notifications', icon: Bell, label: 'Notifications' },
+    { id: 'appearance', icon: theme === 'light' ? Sun : Moon, label: 'Appearance' },
+    { id: 'privacy', icon: Shield, label: 'Privacy & Security' },
+    { id: 'language', icon: Globe, label: 'Language' },
+    { id: 'danger', icon: Trash2, label: 'Delete Account', isDanger: true },
+  ];
+
   const renderContent = () => {
     switch (activeTab) {
       case 'general':
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">General Information</h3>
+            {notification.section === 'general' && (
+              <NotificationMessage 
+                type={notification.type} 
+                message={notification.message} 
+                onClose={() => setNotification({ type: '', message: '', section: '' })}
+              />
+            )}
             {loading ? (
               <div className="flex justify-center items-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
               </div>
             ) : (
-              <>
-                {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-400 px-3 py-2 rounded text-sm">
-                    {error}
+              <form onSubmit={handleUpdateDetails} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Profile Picture</label>
+                  <div className="flex items-center mt-2">
+                    <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-blue-500 dark:text-blue-400 border">
+                      <User size={24} />
+                    </div>
+                    <div className="flex space-x-2 ml-4">
+                      <button
+                        type="button"
+                        className="bg-white dark:bg-gray-700 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        className="bg-white dark:bg-gray-700 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                )}
-                {success && (
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-400 px-3 py-2 rounded text-sm">
-                    {success}
-                  </div>
-                )}
-                <form onSubmit={handleUpdateDetails} className="space-y-4">
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Profile Picture</label>
-                    <div className="flex items-center flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4 mt-2">
-                      <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-blue-500 dark:text-blue-400 border">
-                        <User size={24} />
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          type="button"
-                          className="bg-white dark:bg-gray-700 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
-                        >
-                          Change
-                        </button>
-                        <button
-                          type="button"
-                          className="bg-white dark:bg-gray-700 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
+                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
                   </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                        placeholder="+91 9876543210"
-                      />
-                    </div>
+                  <div>
+                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
                   </div>
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      className="w-full sm:w-auto inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                    >
-                      <Save size={14} className="mr-1" />
-                      Save Changes
-                    </button>
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Email Address
+                  </label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail size={16} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="email"
+                      id="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
                   </div>
-                </form>
-              </>
+                </div>
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="+91 9876543210"
+                  />
+                </div>
+                <div className="pt-3">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <Save size={16} className="mr-2" />
+                    Save Changes
+                  </button>
+                </div>
+              </form>
             )}
           </div>
         );
@@ -293,29 +402,31 @@ const AccountSettings = () => {
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Change Password</h3>
-            {passwordError && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-400 px-3 py-2 rounded text-sm">
-                {passwordError}
-              </div>
-            )}
-            {passwordSuccess && (
-              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-800 dark:text-green-400 px-3 py-2 rounded text-sm">
-                {passwordSuccess}
-              </div>
+            {notification.section === 'password' && (
+              <NotificationMessage 
+                type={notification.type} 
+                message={notification.message} 
+                onClose={() => setNotification({ type: '', message: '', section: '' })}
+              />
             )}
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
                 <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Current Password
                 </label>
-                <input
-                  type="password"
-                  id="currentPassword"
-                  value={passwordData.currentPassword}
-                  onChange={handlePasswordChange}
-                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  required
-                />
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Key size={16} className="text-gray-400" />
+                  </div>
+                  <input
+                    type="password"
+                    id="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    className="block w-full pl-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -326,7 +437,7 @@ const AccountSettings = () => {
                   id="newPassword"
                   value={passwordData.newPassword}
                   onChange={handlePasswordChange}
-                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
@@ -339,16 +450,16 @@ const AccountSettings = () => {
                   id="confirmPassword"
                   value={passwordData.confirmPassword}
                   onChange={handlePasswordChange}
-                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-1.5 px-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
-              <div className="pt-2">
+              <div className="pt-3">
                 <button
                   type="submit"
-                  className="w-full sm:w-auto inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  <Key size={14} className="mr-1" />
+                  <Key size={16} className="mr-2" />
                   Update Password
                 </button>
               </div>
@@ -359,105 +470,134 @@ const AccountSettings = () => {
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Notification Preferences</h3>
-            <div className="space-y-3">
-              <div className="flex items-start">
-                <input id="emailNotif" type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded mt-0.5" defaultChecked />
-                <div className="ml-2 text-sm">
-                  <label htmlFor="emailNotif" className="font-medium text-gray-700 dark:text-gray-300">Email Notifications</label>
-                  <p className="text-gray-500 dark:text-gray-400 text-xs">Receive email notifications for event updates and announcements.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <input id="pushNotif" type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded mt-0.5" defaultChecked />
-                <div className="ml-2 text-sm">
-                  <label htmlFor="pushNotif" className="font-medium text-gray-700 dark:text-gray-300">Push Notifications</label>
-                  <p className="text-gray-500 dark:text-gray-400 text-xs">Receive push notifications for upcoming events.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <input id="marketingEmails" type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded mt-0.5" />
-                <div className="ml-2 text-sm">
-                  <label htmlFor="marketingEmails" className="font-medium text-gray-700 dark:text-gray-300">Marketing Emails</label>
-                  <p className="text-gray-500 dark:text-gray-400 text-xs">Receive marketing emails about new features and events.</p>
+            {notification.section === 'notifications' && (
+              <NotificationMessage 
+                type={notification.type} 
+                message={notification.message} 
+                onClose={() => setNotification({ type: '', message: '', section: '' })}
+              />
+            )}
+            <form onSubmit={handleUpdateNotifications} className="space-y-5">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                      <input id="emailNotif" type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500" defaultChecked />
+                    </div>
+                    <div className="ml-3 text-sm">
+                      <label htmlFor="emailNotif" className="font-medium text-gray-700 dark:text-gray-300">Email Notifications</label>
+                      <p className="text-gray-500 dark:text-gray-400">Receive email notifications for event updates and announcements.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                      <input id="pushNotif" type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500" defaultChecked />
+                    </div>
+                    <div className="ml-3 text-sm">
+                      <label htmlFor="pushNotif" className="font-medium text-gray-700 dark:text-gray-300">Push Notifications</label>
+                      <p className="text-gray-500 dark:text-gray-400">Receive push notifications for upcoming events.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="flex items-center h-5">
+                      <input id="marketingEmails" type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500" />
+                    </div>
+                    <div className="ml-3 text-sm">
+                      <label htmlFor="marketingEmails" className="font-medium text-gray-700 dark:text-gray-300">Marketing Emails</label>
+                      <p className="text-gray-500 dark:text-gray-400">Receive marketing emails about new features and events.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="pt-2">
-                <button className="w-full sm:w-auto inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
-                  <Save size={14} className="mr-1" />
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Bell size={16} className="mr-2" />
                   Save Preferences
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         );
       case 'appearance':
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Appearance Settings</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Theme Mode</label>
-                <div className="flex flex-col space-y-3">
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Theme Mode</label>
+                <div className="grid grid-cols-3 gap-3">
                   <button 
                     onClick={() => setTheme('light')}
-                    className={`relative flex items-center justify-center w-full h-14 rounded-lg border-2 ${
+                    className={`relative flex flex-col items-center justify-center p-3 h-24 rounded-lg border-2 ${
                       theme === 'light' 
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                        : 'border-gray-200 dark:border-gray-700'
+                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                   >
-                    <div className="flex flex-col items-center">
-                      <Sun size={18} className="text-gray-700 dark:text-gray-300" />
-                      <span className="mt-1 font-medium text-xs text-gray-700 dark:text-gray-300">Light</span>
-                    </div>
+                    <Sun size={24} className="text-gray-700 dark:text-gray-300 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300">Light</span>
                     {theme === 'light' && (
-                      <div className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></div>
+                      <div className="absolute top-2 right-2 h-2 w-2 bg-blue-500 rounded-full"></div>
                     )}
                   </button>
                   <button 
                     onClick={() => setTheme('dark')}
-                    className={`relative flex items-center justify-center w-full h-14 rounded-lg border-2 ${
+                    className={`relative flex flex-col items-center justify-center p-3 h-24 rounded-lg border-2 ${
                       theme === 'dark' 
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                        : 'border-gray-200 dark:border-gray-700'
+                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                   >
-                    <div className="flex flex-col items-center">
-                      <Moon size={18} className="text-gray-700 dark:text-gray-300" />
-                      <span className="mt-1 font-medium text-xs text-gray-700 dark:text-gray-300">Dark</span>
-                    </div>
+                    <Moon size={24} className="text-gray-700 dark:text-gray-300 mb-2" />
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300">Dark</span>
                     {theme === 'dark' && (
-                      <div className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></div>
+                      <div className="absolute top-2 right-2 h-2 w-2 bg-blue-500 rounded-full"></div>
                     )}
                   </button>
                   <button 
                     onClick={() => setTheme('system')}
-                    className={`relative flex items-center justify-center w-full h-14 rounded-lg border-2 ${
+                    className={`relative flex flex-col items-center justify-center p-3 h-24 rounded-lg border-2 ${
                       theme === 'system' 
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                        : 'border-gray-200 dark:border-gray-700'
+                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                   >
-                    <div className="flex flex-col items-center">
-                      <div className="flex">
-                        <Sun size={14} className="text-gray-700 dark:text-gray-300" />
-                        <Moon size={14} className="text-gray-700 dark:text-gray-300 ml-0.5" />
-                      </div>
-                      <span className="mt-1 font-medium text-xs text-gray-700 dark:text-gray-300">System</span>
+                    <div className="flex mb-2">
+                      <Sun size={18} className="text-gray-700 dark:text-gray-300" />
+                      <Moon size={18} className="text-gray-700 dark:text-gray-300 ml-1" />
                     </div>
+                    <span className="font-medium text-sm text-gray-700 dark:text-gray-300">System</span>
                     {theme === 'system' && (
-                      <div className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></div>
+                      <div className="absolute top-2 right-2 h-2 w-2 bg-blue-500 rounded-full"></div>
                     )}
                   </button>
                 </div>
               </div>
               <div className="pt-2">
-                <button className="w-full sm:w-auto inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
-                  <Save size={14} className="mr-1" />
+                <button
+                  type="button"
+                  onClick={() => setNotification({ 
+                    type: 'success', 
+                    message: 'Appearance settings saved successfully!', 
+                    section: 'appearance' 
+                  })}
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Save size={16} className="mr-2" />
                   Save Appearance
                 </button>
               </div>
             </div>
+            {notification.section === 'appearance' && (
+              <NotificationMessage 
+                type={notification.type} 
+                message={notification.message} 
+                onClose={() => setNotification({ type: '', message: '', section: '' })}
+              />
+            )}
           </div>
         );
       case 'privacy':
@@ -595,7 +735,7 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 ">
       <div className="container mx-auto p-3 sm:p-4 max-w-3xl">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="hidden lg:block lg:p-4 lg:border-b lg:border-gray-200 lg:dark:border-gray-700">
