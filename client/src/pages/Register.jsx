@@ -285,7 +285,7 @@ const Register = () => {
 
   return (
     <div
-      className="min-h-screen bg-cover bg-center flex items-center justify-center px-2 sm:px-4 py-6 sm:py-6 lg:px-8"
+      className="min-h-[calc(100vh-4rem)] bg-cover bg-center flex items-center justify-center px-2 sm:px-4 py-6 sm:py-6 lg:px-8"
       style={{
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${backgroundImage})`,
         backgroundBlendMode: "overlay",

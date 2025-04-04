@@ -735,7 +735,8 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-10 ">
+    
+    <div className="min-h-[calc(100vh-4rem)] bg-gray-100 dark:bg-gray-900 py-10">
       <div className="container mx-auto p-3 sm:p-4 max-w-3xl">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="hidden lg:block lg:p-4 lg:border-b lg:border-gray-200 lg:dark:border-gray-700">
