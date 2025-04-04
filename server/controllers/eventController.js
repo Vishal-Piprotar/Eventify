@@ -73,10 +73,17 @@ export const getEvents = async (req, res) => {
   }
 };
 
+// controllers/eventController.js
+
 export const getEventById = async (req, res) => {
   try {
     const eventId = req.params.id;
-    if (!eventId) return res.status(400).json({ error: 'Bad Request', message: 'Event ID is required' });
+    if (!eventId) {
+      console.warn('[getEventById] No event ID provided in request params');
+      return res.status(400).json({ error: 'Bad Request', message: 'Event ID is required' });
+    }
+
+    console.log(`[getEventById] Requested Event ID: ${eventId}`);
 
     const headers = {
       'Authorization': `Bearer ${conn.get().accessToken}`,
@@ -84,10 +91,21 @@ export const getEventById = async (req, res) => {
     };
 
     const response = await axios.get(getSfApiBaseUrl(), { headers });
-    const eventsData = typeof response.data.data === 'string' ? JSON.parse(response.data.data) : response.data.data;
-    const event = eventsData.find(e => e.Id === eventId);
 
-    if (!event) return res.status(404).json({ error: 'Not Found', message: 'Event not found' });
+    const eventsData = typeof response.data.data === 'string'
+      ? JSON.parse(response.data.data)
+      : response.data.data;
+
+    console.log(`[getEventById] Total events fetched from Salesforce: ${eventsData.length}`);
+    console.log('[getEventById] Event IDs:', eventsData.map(e => e.Id));
+
+    // 🔍 Case-insensitive match
+    const event = eventsData.find(e => e.Id?.toLowerCase() === eventId.toLowerCase());
+
+    if (!event) {
+      console.warn(`[getEventById] No matching event found for ID: ${eventId}`);
+      return res.status(404).json({ error: 'Not Found', message: `Event with ID ${eventId} not found` });
+    }
 
     const formattedEvent = {
       id: event.Id,
@@ -100,12 +118,24 @@ export const getEventById = async (req, res) => {
       location: event.Location__c || 'Virtual',
     };
 
-    res.status(200).json({ success: true, message: 'Event retrieved successfully', data: formattedEvent });
+    console.log('[getEventById] Matched Event:', formattedEvent);
+
+    res.status(200).json({
+      success: true,
+      message: 'Event retrieved successfully',
+      data: formattedEvent,
+    });
   } catch (error) {
-    console.error('Get event by ID error:', error);
-    res.status(error.response?.status || 500).json({ error: 'Fetch Failed', message: error.message });
+    console.error('[getEventById] Error occurred:', error);
+    res.status(error.response?.status || 500).json({
+      error: 'Fetch Failed',
+      message: error.message,
+    });
   }
 };
+
+
+
 
 export const updateEvent = async (req, res) => {
   try {

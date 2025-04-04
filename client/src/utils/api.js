@@ -1,5 +1,3 @@
-// src/api/api.js
-
 import axios from "axios";
 
 // Base API URL from .env
@@ -66,14 +64,50 @@ export const fetchEvents = () =>
 export const getEventById = (eventId) =>
   api.get(`/events/${eventId}`).then((res) => res.data);
 
-export const createEvent = (eventData) =>
-  api.post("/events", eventData).then((res) => res.data);
+export const createEvent = (eventData) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
 
-export const updateEvent = (eventId, eventData) =>
-  api.put(`/events/${eventId}`, eventData).then((res) => res.data);
+  if (!userId) throw new Error("User ID required");
 
-export const deleteEvent = (eventId) =>
-  api.delete(`/events/${eventId}`).then((res) => res.data);
+  return api
+    .post("/events", eventData, {
+      headers: {
+        "x-user-id": userId,
+      },
+    })
+    .then((res) => res.data);
+};
+
+export const updateEvent = (eventId, eventData) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+
+  if (!userId) throw new Error("User ID required");
+
+  return api
+    .put(`/events/${eventId}`, eventData, {
+      headers: {
+        "x-user-id": userId,
+      },
+    })
+    .then((res) => res.data);
+};
+
+export const deleteEvent = (eventId) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+
+  if (!userId) throw new Error("User ID required");
+
+  return api
+    .delete(`/events/${eventId}`, {
+      headers: {
+        "x-user-id": userId,
+      },
+    })
+    .then((res) => res.data);
+};
 
 export const fetchMyEvents = () =>
   api.get("/events/my-events").then((res) => res.data);
@@ -86,14 +120,42 @@ export const getEventAttendees = (eventId) =>
 // 👥 Attendee APIs
 // ==========================
 
-export const registerAttendee = (attendeeData) =>
-  api.post("/attendees", attendeeData).then((res) => res.data);
+export const registerAttendee = (attendeeData) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+
+  if (!userId) throw new Error("User ID required");
+
+  return api
+    .post("/attendees", attendeeData, {
+      headers: {
+        "x-user-id": userId,
+      },
+    })
+    .then((res) => res.data);
+};
+
+export const fetchMyRegistrations = () =>
+  api.get("/attendees/my-registrations").then((res) => res.data);
 
 export const fetchEventAttendees = (eventId) =>
   api.get(`/attendees/${eventId}`).then((res) => res.data);
 
-export const cancelAttendeeRegistration = (attendeeId) =>
-  api.put(`/attendees/cancel/${attendeeId}`).then((res) => res.data);
+export const cancelAttendeeRegistration = (attendeeId) => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+
+  if (!userId || !attendeeId) throw new Error("User ID and Attendee ID are required");
+
+  return api
+    .put(`/attendees/${attendeeId}`, {}, {
+      headers: {
+        "x-user-id": userId,
+      },
+    })
+    .then((res) => res.data);
+};
+
 
 export const deleteAttendee = (attendeeId) =>
   api.delete(`/attendees/${attendeeId}`).then((res) => res.data);

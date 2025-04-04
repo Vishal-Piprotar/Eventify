@@ -1,5 +1,3 @@
-// controllers/attendeeController.js
-
 import axios from 'axios';
 import conn from '../config/salesforce.js';
 
@@ -27,6 +25,9 @@ const getDeleteHeader = (attendeeId) => {
   };
 };
 
+// ===============================
+// Register Attendee
+// ===============================
 export const registerAttendee = async (req, res) => {
   try {
     const { name, email, eventId } = req.body;
@@ -34,13 +35,15 @@ export const registerAttendee = async (req, res) => {
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized', message: 'User ID required' });
     if (!name || !email || !eventId) {
-      return res.status(400).json({ error: 'Bad Request', message: 'name, email and eventId are required' });
+      return res.status(400).json({ error: 'Bad Request', message: 'name, email, and eventId are required' });
     }
 
-    const attendeeData = { Name: name, email, eventId };
+    const attendeeData = { name, email, eventId };
     const response = await axios.post(getSfApiBaseUrl(), attendeeData, getAuthHeader(userId));
 
-    const resultData = typeof response.data.data === 'string' ? JSON.parse(response.data.data) : response.data.data;
+    const resultData = typeof response.data.data === 'string'
+      ? JSON.parse(response.data.data)
+      : response.data.data;
 
     res.status(201).json({
       success: true,
@@ -48,11 +51,20 @@ export const registerAttendee = async (req, res) => {
       data: { id: resultData.attendeeId, name, email, eventId, userId },
     });
   } catch (error) {
-    console.error('Attendee registration error:', error);
-    res.status(error.response?.status || 500).json({ error: 'Registration Failed', message: error.message });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.message || error.message;
+
+    console.error('Attendee registration error:', message);
+    res.status(status).json({
+      error: status === 409 ? 'Already Registered' : 'Registration Failed',
+      message,
+    });
   }
 };
 
+// ===============================
+// Get Attendees by Event
+// ===============================
 export const getEventAttendees = async (req, res) => {
   try {
     const eventId = req.params.eventId;
@@ -64,7 +76,9 @@ export const getEventAttendees = async (req, res) => {
     };
 
     const response = await axios.get(`${getSfApiBaseUrl()}/${eventId}`, { headers });
-    const attendees = typeof response.data.data === 'string' ? JSON.parse(response.data.data) : response.data.data;
+    const attendees = typeof response.data.data === 'string'
+      ? JSON.parse(response.data.data)
+      : response.data.data;
 
     res.status(200).json({
       success: true,
@@ -72,11 +86,14 @@ export const getEventAttendees = async (req, res) => {
       data: { total: attendees.length, attendees },
     });
   } catch (error) {
-    console.error('Get attendees error:', error);
+    console.error('Get attendees error:', error.message);
     res.status(error.response?.status || 500).json({ error: 'Fetch Failed', message: error.message });
   }
 };
 
+// ===============================
+// Cancel Attendee Registration
+// ===============================
 export const cancelAttendee = async (req, res) => {
   try {
     const userId = req.headers['x-user-id'] || req.user?.id;
@@ -92,11 +109,14 @@ export const cancelAttendee = async (req, res) => {
       message: response.data.message || 'Attendee registration cancelled successfully',
     });
   } catch (error) {
-    console.error('Cancel registration error:', error);
+    console.error('Cancel registration error:', error.message);
     res.status(error.response?.status || 500).json({ error: 'Cancel Failed', message: error.message });
   }
 };
 
+// ===============================
+// Delete Attendee (Admin)
+//—===============================
 export const deleteAttendee = async (req, res) => {
   try {
     const attendeeId = req.params.attendeeId;
@@ -110,8 +130,32 @@ export const deleteAttendee = async (req, res) => {
       data: { id: attendeeId },
     });
   } catch (error) {
-    console.error('Delete attendee error:', error);
+    console.error('Delete attendee error:', error.message);
     res.status(error.response?.status || 500).json({ error: 'Deletion Failed', message: error.message });
+  }
+};
+
+// ===============================
+// Optional: Get My Registered Events
+// ===============================
+export const getMyAttendees = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] || req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized', message: 'User ID required' });
+
+    const response = await axios.get(`${getSfApiBaseUrl()}/my`, getAuthHeader(userId));
+    const attendees = typeof response.data.data === 'string'
+      ? JSON.parse(response.data.data)
+      : response.data.data;
+
+    res.status(200).json({
+      success: true,
+      message: 'Your registrations retrieved successfully',
+      data: attendees,
+    });
+  } catch (error) {
+    console.error('Get my attendees error:', error.message);
+    res.status(error.response?.status || 500).json({ error: 'Fetch Failed', message: error.message });
   }
 };
 
@@ -120,4 +164,5 @@ export default {
   getEventAttendees,
   cancelAttendee,
   deleteAttendee,
+  getMyAttendees,
 };
